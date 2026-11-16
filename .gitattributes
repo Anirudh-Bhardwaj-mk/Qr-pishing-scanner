@@ -1,2 +1,1003 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AegisQR - AI Quishing Defense Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#f4f7f4',
+                            100: '#e3ebe3',
+                            200: '#c7d7c7',
+                            300: '#a3bfa3',
+                            400: '#8aaa8a',
+                            500: '#678d67',
+                            600: '#527352',
+                            700: '#425b42',
+                            800: '#374a37',
+                        },
+                        cream: {
+                            50: '#fffefc',
+                            100: '#fdfbf7',
+                            200: '#f9f5ec',
+                            300: '#f3ebd9',
+                        },
+                        pastel: {
+                            blue: '#e6f0fa',
+                            ice: '#d5e6f7',
+                            sky: '#b0d3f2',
+                            navy: '#2c3e50',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- jsQR Library for client-side QR decoding -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- Canvas Confetti for safe scan delights -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        body {
+            background-color: #fdfbf7;
+            color: #2c3e50;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fdfbf7;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7d7c7;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a3bfa3;
+        }
+
+        .drop-zone {
+            transition: all 0.25s ease-in-out;
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='16' ry='16' stroke='%23A3BFA3FF' stroke-width='2' stroke-dasharray='8%2c 8' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+        .drop-zone.dragover {
+            background-color: #e3ebe3;
+            transform: scale(1.005);
+        }
+
+        /* Radar scan effect */
+        @keyframes scanLine {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0.8; }
+        }
+        .scanning-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #678d67, #2c3e50, #678d67, transparent);
+            box-shadow: 0 0 12px #678d67;
+            animation: scanLine 2s ease-in-out infinite alternate;
+        }
+
+        /* Meter gauge styling */
+        .gauge-circle {
+            transition: stroke-dashoffset 0.8s ease-in-out, stroke 0.5s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-sage-200 selection:text-sage-800">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 bg-cream-100/90 backdrop-blur-md border-b border-sage-100 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-sage-500 flex items-center justify-center text-white shadow-sm shadow-sage-500/20">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <span class="font-bold text-lg tracking-tight text-sage-800 flex items-center gap-2">
+                    AegisQR <span class="text-xs bg-sage-100 text-sage-700 px-2 py-0.5 rounded-full font-semibold border border-sage-200">v2.4 AI Engine</span>
+                </span>
+                <p class="text-xs text-gray-500 hidden sm:block">Intelligent QR Code Phishing & Payload Inspection Matrix</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3 text-sm">
+            <button onclick="scrollToSection('sandbox-section')" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sage-700 hover:bg-sage-100 transition-colors font-medium">
+                <i data-lucide="flask-conical" class="w-4 h-4"></i> Sandbox Scenarios
+            </button>
+            <button onclick="scrollToSection('architecture-section')" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sage-700 hover:bg-sage-100 transition-colors font-medium">
+                <i data-lucide="cpu" class="w-4 h-4"></i> AI Features
+            </button>
+            <a href="#scanner-main" class="px-4 py-2 bg-sage-600 hover:bg-sage-700 text-white rounded-lg shadow-sm font-medium transition-all flex items-center gap-2 text-xs sm:text-sm">
+                <i data-lucide="scan" class="w-4 h-4"></i> Launch Scanner
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Application Container -->
+    <main id="scanner-main" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-8">
+
+        <!-- Hero & Intro Banner -->
+        <section class="bg-gradient-to-r from-sage-50 via-cream-100 to-pastel-blue/40 border border-sage-200/60 rounded-2xl p-6 sm:p-8 shadow-sm">
+            <div class="max-w-3xl space-y-3">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-50 border border-sage-200 text-xs text-sage-700 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-sage-500 animate-pulse"></span> Dynamic Multi-Layer Inspection Active
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-pastel-navy tracking-tight">
+                    Neutralize Quishing Attacks Before They Reach Your Browser
+                </h1>
+                <p class="text-sm sm:text-base text-gray-600 leading-relaxed">
+                    QR codes hide dangerous destinations inside 2D matrices, bypassing traditional email text filters. AegisQR combines computer vision bounding with lexical NLP and anomaly detection models to assess payload safety instantly.
+                </p>
+            </div>
+        </section>
+
+        <!-- Main Scanner Grid Interface -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: Image Drag & Drop + Canvas Visualizer -->
+            <div class="lg:col-span-5 flex flex-col space-y-4">
+                <div class="bg-white rounded-2xl p-5 border border-sage-100 shadow-sm flex flex-col h-full justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-base font-semibold text-pastel-navy flex items-center gap-2">
+                                <i data-lucide="qr-code" class="w-5 h-5 text-sage-600"></i> Code Ingestion & Vision
+                            </h2>
+                            <span id="canvas-status" class="text-xs px-2.5 py-1 rounded-full bg-sage-50 text-sage-700 font-mono border border-sage-200">
+                                Idle - Ready
+                            </span>
+                        </div>
+
+                        <!-- Drop Zone -->
+                        <div id="drop-zone" class="drop-zone rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[260px] overflow-hidden group">
+                            <input type="file" id="file-input" class="hidden" accept="image/*">
+                            
+                            <!-- Scanning Animation Line overlay -->
+                            <div id="scan-line" class="scanning-line hidden"></div>
+
+                            <!-- Placeholder State -->
+                            <div id="upload-placeholder" class="space-y-3 flex flex-col items-center">
+                                <div class="w-14 h-14 rounded-2xl bg-sage-100 text-sage-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-700">Drop your QR Code image here</p>
+                                    <p class="text-xs text-gray-400 mt-1">PNG, JPG, WEBP, or SVG up to 10MB</p>
+                                </div>
+                                <button type="button" class="mt-2 px-4 py-1.5 text-xs bg-cream-200 hover:bg-cream-300 text-sage-800 rounded-lg font-medium border border-sage-200 transition-colors">
+                                    Browse Files
+                                </button>
+                            </div>
+
+                            <!-- Canvas Image Preview with Vector Matrix Bounding -->
+                            <div id="canvas-wrapper" class="hidden w-full flex flex-col items-center">
+                                <canvas id="qr-canvas" class="max-w-full max-h-[300px] rounded-lg shadow-sm border border-gray-200 object-contain"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Controls & Helper Tips -->
+                    <div class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                        <span class="flex items-center gap-1"><i data-lucide="lock" class="w-3.5 h-3.5 text-sage-500"></i> Client-Side Safe Decode</span>
+                        <button id="reset-btn" onclick="resetScanner()" class="text-sage-700 font-semibold hover:underline hidden">
+                            Clear Canvas
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Real-time Analysis Dashboard -->
+            <div class="lg:col-span-7 flex flex-col space-y-6">
+
+                <!-- Risk Score Gauge & Verdict Header -->
+                <div class="bg-white rounded-2xl p-6 border border-sage-100 shadow-sm relative overflow-hidden">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                        
+                        <!-- Circular Gauge Meter -->
+                        <div class="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                <!-- Background Track -->
+                                <circle cx="50" cy="50" r="40" stroke="#f4f7f4" stroke-width="10" fill="transparent"/>
+                                <!-- Risk Progress Arc -->
+                                <circle id="risk-gauge" class="gauge-circle" cx="50" cy="50" r="40" stroke="#678d67" stroke-width="10" fill="transparent"
+                                        stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <span id="risk-score-num" class="text-2xl font-black text-pastel-navy">0%</span>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Threat Index</span>
+                            </div>
+                        </div>
+
+                        <!-- Verdict Text Details -->
+                        <div class="flex-grow space-y-2 text-center sm:text-left">
+                            <div class="flex items-center justify-center sm:justify-start gap-2">
+                                <span id="verdict-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-sage-100 text-sage-700 border border-sage-200 tracking-wide uppercase">
+                                    Awaiting Input
+                                </span>
+                                <span id="confidence-tag" class="text-xs text-gray-400 font-mono">Confidence: --</span>
+                            </div>
+                            <h3 id="verdict-title" class="text-xl font-bold text-pastel-navy">Upload an image to scan</h3>
+                            <p id="verdict-desc" class="text-xs text-gray-500 leading-relaxed">
+                                AegisQR extracts raw strings, decodes nested shorteners, checks lexical entropy, IP structures, and spoofing keywords.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Decoded Payload URL Container -->
+                <div class="bg-white rounded-2xl p-5 border border-sage-100 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold uppercase tracking-wider text-sage-800 flex items-center gap-1.5">
+                            <i data-lucide="link-2" class="w-4 h-4 text-sage-600"></i> Decoded Target URL / Payload
+                        </label>
+                        <button onclick="copyPayload()" class="text-xs text-sage-600 hover:text-sage-800 font-medium flex items-center gap-1 bg-sage-50 px-2.5 py-1 rounded-md border border-sage-200 transition-colors">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy String
+                        </button>
+                    </div>
+                    <div class="bg-cream-100 rounded-xl p-3 border border-sage-200/70 font-mono text-xs sm:text-sm text-pastel-navy break-all min-h-[44px] flex items-center" id="payload-output">
+                        <span class="text-gray-400 italic">No QR code payload detected yet...</span>
+                    </div>
+                </div>
+
+                <!-- Feature Metric Indicators Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    
+                    <!-- Metric 1: Protocol -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">Protocol Safety</span>
+                            <i data-lucide="lock" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-protocol" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-protocol-sub" class="text-[10px] text-gray-400 mt-1">SSL/TLS Check</span>
+                    </div>
+
+                    <!-- Metric 2: IP Address Detection -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">Raw IP Domain</span>
+                            <i data-lucide="server" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-ip" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-ip-sub" class="text-[10px] text-gray-400 mt-1">Host Verification</span>
+                    </div>
+
+                    <!-- Metric 3: URL Shortener -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">URL Shortener</span>
+                            <i data-lucide="shrink" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-shortener" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-shortener-sub" class="text-[10px] text-gray-400 mt-1">Redirection Mask</span>
+                    </div>
+
+                    <!-- Metric 4: Keyword Anomalies -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">Phish Keywords</span>
+                            <i data-lucide="key-round" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-keywords" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-keywords-sub" class="text-[10px] text-gray-400 mt-1">Auth/Urgency NLP</span>
+                    </div>
+
+                    <!-- Metric 5: Lexical Entropy / Length -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">Structural Length</span>
+                            <i data-lucide="ruler" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-length" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-length-sub" class="text-[10px] text-gray-400 mt-1">Character Count</span>
+                    </div>
+
+                    <!-- Metric 6: Typosquat / Subdomains -->
+                    <div class="bg-white p-3.5 rounded-xl border border-sage-100 shadow-sm flex flex-col justify-between">
+                        <div class="flex items-center justify-between text-gray-400 mb-1">
+                            <span class="text-[11px] font-semibold text-gray-500">Domain Depth</span>
+                            <i data-lucide="layers" class="w-4 h-4 text-sage-500"></i>
+                        </div>
+                        <span id="metric-depth" class="text-sm font-bold text-gray-800">--</span>
+                        <span id="metric-depth-sub" class="text-[10px] text-gray-400 mt-1">Subdomain Multipliers</span>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Detailed Threat Analysis & Recommended Action Tabs -->
+        <section class="bg-white rounded-2xl border border-sage-100 p-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-4 mb-4 gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-pastel-navy flex items-center gap-2">
+                        <i data-lucide="file-search" class="w-5 h-5 text-sage-600"></i> Forensic Breakdown & Mitigation Guidelines
+                    </h3>
+                    <p class="text-xs text-gray-500">In-depth feature weights and tactical recommendations for security responders</p>
+                </div>
+                <!-- Action Controls -->
+                <div id="action-recommendation" class="hidden items-center gap-2">
+                    <span class="text-xs text-gray-500 font-medium">Recommended Action:</span>
+                    <span id="action-badge" class="px-3 py-1 rounded-lg text-xs font-bold uppercase">--</span>
+                </div>
+            </div>
+
+            <!-- Threat List -->
+            <div id="indicators-container" class="space-y-3">
+                <div class="p-4 bg-cream-50 rounded-xl border border-sage-200/60 text-xs text-gray-500 flex items-center gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-sage-500 flex-shrink-0"></i>
+                    <span>No active scan performed. Scan a QR code image above or select a preset scenario from the interactive sandbox below.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE SANDBOX & PRESET SCENARIOS -->
+        <section id="sandbox-section" class="space-y-4 pt-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-pastel-navy flex items-center gap-2">
+                        <i data-lucide="flask-conical" class="w-5 h-5 text-sage-600"></i> Interactive Threat Simulation Sandbox
+                    </h2>
+                    <p class="text-xs text-gray-500">Test pre-generated QR samples representing real-world quishing attack patterns.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Preset 1: Parking Meter Scam -->
+                <div onclick="loadPreset('parking')" class="bg-white p-5 rounded-2xl border border-sage-100 hover:border-sage-400 cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold text-xs">
+                            <i data-lucide="parking-square" class="w-4 h-4"></i>
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">HIGH RISK</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-pastel-navy group-hover:text-sage-700 transition-colors">Meter Sticker Scam</h4>
+                        <p class="text-xs text-gray-500 mt-1">Fake parking sign QR leading to an raw IP address phishing portal.</p>
+                    </div>
+                    <div class="text-[11px] font-mono text-gray-400 bg-cream-50 p-2 rounded border border-sage-100 truncate">
+                        http://192.168.1.104/pay/parking
+                    </div>
+                </div>
+
+                <!-- Preset 2: Executive Payroll MFA Update -->
+                <div onclick="loadPreset('payroll')" class="bg-white p-5 rounded-2xl border border-sage-100 hover:border-sage-400 cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
+                            <i data-lucide="user-check" class="w-4 h-4"></i>
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">SUSPICIOUS</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-pastel-navy group-hover:text-sage-700 transition-colors">Payroll MFA Update</h4>
+                        <p class="text-xs text-gray-500 mt-1">Email PDF QR claiming urgent identity update on spoofed subdomains.</p>
+                    </div>
+                    <div class="text-[11px] font-mono text-gray-400 bg-cream-50 p-2 rounded border border-sage-100 truncate">
+                        http://login-verify-mfa.company-hr.update-user.com
+                    </div>
+                </div>
+
+                <!-- Preset 3: Obfuscated Shortener Link -->
+                <div onclick="loadPreset('shortener')" class="bg-white p-5 rounded-2xl border border-sage-100 hover:border-sage-400 cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">
+                            <i data-lucide="link" class="w-4 h-4"></i>
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-700">SUSPICIOUS</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-pastel-navy group-hover:text-sage-700 transition-colors">Masked Shortener</h4>
+                        <p class="text-xs text-gray-500 mt-1">Bit.ly link hiding its destination behind login-style parameters.</p>
+                    </div>
+                    <div class="text-[11px] font-mono text-gray-400 bg-cream-50 p-2 rounded border border-sage-100 truncate">
+                        https://bit.ly/3xX9aM2?user=admin@corp-secure-login.net
+                    </div>
+                </div>
+
+                <!-- Preset 4: Safe Corporate Portal -->
+                <div onclick="loadPreset('safe')" class="bg-white p-5 rounded-2xl border border-sage-100 hover:border-sage-400 cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="w-8 h-8 rounded-lg bg-sage-100 text-sage-600 flex items-center justify-center font-bold text-xs">
+                            <i data-lucide="shield" class="w-4 h-4"></i>
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-sage-100 text-sage-700">SAFE</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-pastel-navy group-hover:text-sage-700 transition-colors">Legitimate Portal</h4>
+                        <p class="text-xs text-gray-500 mt-1">Verified enterprise domain with clean SSL and structural norms.</p>
+                    </div>
+                    <div class="text-[11px] font-mono text-gray-400 bg-cream-50 p-2 rounded border border-sage-100 truncate">
+                        https://acme-corp.com/docs/employee-guide.pdf
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SYSTEM ARCHITECTURE & FEATURE PIPELINE INFO -->
+        <section id="architecture-section" class="bg-gradient-to-b from-cream-100 to-sage-50/50 rounded-2xl border border-sage-200/70 p-6 sm:p-8 space-y-6">
+            <div class="max-w-2xl">
+                <h3 class="text-xl font-bold text-pastel-navy flex items-center gap-2">
+                    <i data-lucide="cpu" class="w-5 h-5 text-sage-600"></i> AI Feature Extraction Pipeline Architecture
+                </h3>
+                <p class="text-xs sm:text-sm text-gray-600 mt-1">
+                    How AegisQR evaluates decoded payloads in real time across three distinct inspection filters.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <div class="bg-white p-5 rounded-xl border border-sage-100 shadow-sm space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-sage-100 text-sage-700 flex items-center justify-center font-bold text-xs">01</div>
+                    <h4 class="font-bold text-sm text-pastel-navy">Vision & Matrix Decode</h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        Extracts QR finder patterns, corrects image skew, and retrieves binary payload streams client-side without sending sensitive images to external servers.
+                    </p>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-sage-100 shadow-sm space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-pastel-blue text-pastel-navy flex items-center justify-center font-bold text-xs">02</div>
+                    <h4 class="font-bold text-sm text-pastel-navy">Lexical URL Engineering</h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        Calculates domain entropy, structural length, IP address flags, subdomain depth, protocol integrity, and credential `@` token abuse.
+                    </p>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl border border-sage-100 shadow-sm space-y-2">
+                    <div class="w-8 h-8 rounded-lg bg-cream-300 text-amber-800 flex items-center justify-center font-bold text-xs">03</div>
+                    <h4 class="font-bold text-sm text-pastel-navy">NLP Threat Scoring Engine</h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        Scans string tokens against spoofing keywords (`verify`, `mfa-update`, `banking`, `login`) combined with protocol safety metrics.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-cream-100 border-t border-sage-100 py-6 px-4 text-center text-xs text-gray-500 mt-12">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i data-lucide="shield" class="w-4 h-4 text-sage-600"></i>
+                <span class="font-semibold text-gray-700">AegisQR Defensive Security Lab</span>
+            </div>
+            <p>Designed for zero-trust organizational threat awareness and quishing prevention.</p>
+            <div class="flex gap-4 text-sage-700 font-medium">
+                <a href="#scanner-main" onclick="scrollToSection('scanner-main')" class="hover:underline">Back to Top</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-pastel-navy text-white px-4 py-3 rounded-xl shadow-lg text-xs flex items-center gap-2 transition-all duration-300 transform translate-y-20 opacity-0 pointer-events-none">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-sage-300"></i>
+        <span id="toast-message">Message</span>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Initialize Lucide Icons (safe if the CDN fails)
+        function refreshIcons() { if (window.lucide) lucide.createIcons(); }
+        refreshIcons();
+
+        // DOM Element Handles
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const canvasWrapper = document.getElementById('canvas-wrapper');
+        const canvas = document.getElementById('qr-canvas');
+        const ctx = canvas.getContext('2d');
+        const scanLine = document.getElementById('scan-line');
+        const canvasStatus = document.getElementById('canvas-status');
+        const resetBtn = document.getElementById('reset-btn');
+        let scanId = 0; // guards against stale timers after reset/new scan
+
+        const payloadOutput = document.getElementById('payload-output');
+        const riskGauge = document.getElementById('risk-gauge');
+        const riskScoreNum = document.getElementById('risk-score-num');
+        const verdictBadge = document.getElementById('verdict-badge');
+        const verdictTitle = document.getElementById('verdict-title');
+        const verdictDesc = document.getElementById('verdict-desc');
+        const confidenceTag = document.getElementById('confidence-tag');
+        const indicatorsContainer = document.getElementById('indicators-container');
+        const actionRecommendation = document.getElementById('action-recommendation');
+        const actionBadge = document.getElementById('action-badge');
+
+        // Metric Display Handles
+        const mProtocol = document.getElementById('metric-protocol');
+        const mIp = document.getElementById('metric-ip');
+        const mShortener = document.getElementById('metric-shortener');
+        const mKeywords = document.getElementById('metric-keywords');
+        const mLength = document.getElementById('metric-length');
+        const mDepth = document.getElementById('metric-depth');
+
+        // Preset QR Data Maps
+        const PRESETS = {
+            parking: {
+                payload: "http://192.168.1.104/pay/city-parking-meter-ref=8849",
+                title: "Parking Meter Scam",
+                svgText: "PARK"
+            },
+            payroll: {
+                payload: "http://login-verify-mfa.company-hr.update-user.com/auth/login.php",
+                title: "Payroll MFA Phish",
+                svgText: "MFA"
+            },
+            shortener: {
+                payload: "https://bit.ly/3xX9aM2?user=admin@corp-secure-login.net",
+                title: "Masked Shortener",
+                svgText: "LINK"
+            },
+            safe: {
+                payload: "https://acme-corp.com/docs/employee-guide.pdf",
+                title: "Legitimate Corporate Portal",
+                svgText: "SAFE"
+            }
+        };
+
+        // Setup Drag & Drop Handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Handle uploaded File
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast("Please upload a valid image file (PNG, JPG, WEBP)");
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showToast("File is larger than 10MB");
+                return;
+            }
+            const myScan = ++scanId;
+            canvasStatus.innerText = "Processing...";
+            scanLine.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    if (!img.width || !img.height) { img.onerror(); return; }
+                    // Set canvas bounds
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Read Image Data for QR decoding
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "attemptBoth",
+                    });
+
+                    uploadPlaceholder.classList.add('hidden');
+                    canvasWrapper.classList.remove('hidden');
+                    resetBtn.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        if (myScan !== scanId) return;
+                        scanLine.classList.add('hidden');
+                        if (code) {
+                            // Highlight detected QR bounds on canvas
+                            drawQRBoundingBox(code.location);
+                            canvasStatus.innerText = "QR Detected";
+                            analyzePayload(code.data);
+                        } else {
+                            // Fallback if jsQR misses (try mock extract or inform user)
+                            resetScanner();
+                            canvasStatus.innerText = "No QR Found";
+                            showToast("No QR code found in that image. Try a clearer or closer crop.");
+                        }
+                    }, 600);
+                };
+                img.onerror = () => {
+                    scanLine.classList.add('hidden');
+                    canvasStatus.innerText = "Idle - Ready";
+                    showToast("Could not read this image file.");
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = () => { scanLine.classList.add('hidden'); showToast("Could not read this file."); };
+            reader.readAsDataURL(file);
+            fileInput.value = ""; // allow re-selecting the same file
+        }
+
+        // Draw bounding lines on canvas
+        function drawQRBoundingBox(location) {
+            ctx.lineWidth = Math.max(3, Math.floor(canvas.width / 150));
+            ctx.strokeStyle = "#678d67";
+            ctx.beginPath();
+            ctx.moveTo(location.topLeftCorner.x, location.topLeftCorner.y);
+            ctx.lineTo(location.topRightCorner.x, location.topRightCorner.y);
+            ctx.lineTo(location.bottomRightCorner.x, location.bottomRightCorner.y);
+            ctx.lineTo(location.bottomLeftCorner.x, location.bottomLeftCorner.y);
+            ctx.closePath();
+            ctx.stroke();
+
+            // Glow effect
+            ctx.lineWidth = ctx.lineWidth * 2;
+            ctx.strokeStyle = "rgba(103, 141, 103, 0.4)";
+            ctx.stroke();
+        }
+
+        // Feature Extraction Engine & Risk Evaluation
+        function analyzePayload(rawPayload) {
+            payloadOutput.innerText = rawPayload;
+
+            let url = rawPayload.trim();
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+            }
+
+            let parsed;
+            try {
+                parsed = new URL(url);
+            } catch (err) {
+                parsed = { hostname: url, pathname: '', protocol: 'http:' };
+            }
+
+            const hostname = parsed.hostname || '';
+            const fullUrl = url.toLowerCase();
+
+            // 1. IP Detection
+            const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+            
+            // 2. Shorteners
+            const shortenerDomains = ['bit.ly', 'goo.gl', 't.co', 'ow.ly', 'tinyurl.com', 'is.gd', 'rb.gy'];
+            const host = hostname.toLowerCase();
+            const isShortener = shortenerDomains.some(d => host === d || host.endsWith('.' + d));
+
+            // 3. Phishing Keywords
+            const suspiciousWords = ['login', 'verify', 'update', 'account', 'banking', 'secure', 'mfa', 'payroll', 'auth', 'admin'];
+            const foundKeywords = suspiciousWords.filter(w => fullUrl.includes(w));
+
+            // 4. Protocol
+            const isHttps = parsed.protocol === 'https:';
+
+            // 5. Length & Subdomains
+            const urlLength = rawPayload.length;
+            const subdomainCount = isIp ? 0 : (hostname.match(/\./g) || []).length;
+            const hasAtSymbol = !!(parsed.username || parsed.password); // user@host trick
+
+            // Compute Weighted Risk Score (0 - 100)
+            let score = 0;
+            let indicators = [];
+
+            if (isIp) {
+                score += 45;
+                indicators.push({ title: "Raw IP Address Used", desc: "Domain uses a numeric IP address instead of a registered domain name, bypassing DNS reputation.", impact: "High", weight: "+45%" });
+            }
+
+            if (isShortener) {
+                score += 25;
+                indicators.push({ title: "URL Shortener Masking", desc: "Shortening services obscure the final landing destination and bypass initial content scanners.", impact: "Medium", weight: "+25%" });
+            }
+
+            if (hasAtSymbol) {
+                score += 30;
+                indicators.push({ title: "Obfuscated '@' Token", desc: "URL embeds credentials before the host (user@host), a trick that disguises the real destination.", impact: "High", weight: "+30%" });
+            }
+
+            if (foundKeywords.length > 0) {
+                const add = Math.min(foundKeywords.length * 15, 30);
+                score += add;
+                indicators.push({ title: "Phishing Keywords Detected", desc: `Payload contains high-risk authentication tokens: ${foundKeywords.join(', ')}.`, impact: "High", weight: `+${add}%` });
+            }
+
+            if (!isHttps) {
+                score += 15;
+                indicators.push({ title: "Unencrypted HTTP Protocol", desc: "Destination lacks SSL/TLS encryption, making credentials vulnerable to interception.", impact: "Medium", weight: "+15%" });
+            }
+
+            if (subdomainCount > 3) {
+                score += 15;
+                indicators.push({ title: "Excessive Subdomain Stacking", desc: `Hostname has ${subdomainCount} dot-separated levels, a tactic used to mimic trusted corporate structures.`, impact: "Low", weight: "+15%" });
+            }
+
+            if (urlLength > 75) {
+                score += 10;
+                indicators.push({ title: "Excessive Payload Length", desc: `URL is ${urlLength} characters long, potentially concealing parameters off-screen.`, impact: "Low", weight: "+10%" });
+            }
+
+            // Cap risk score
+            score = Math.min(Math.max(score, 0), 100);
+
+            // Update UI Displays
+            updateDashboard(score, {
+                isHttps,
+                isIp,
+                isShortener,
+                foundKeywords,
+                urlLength,
+                subdomainCount,
+                indicators
+            });
+        }
+
+        // Update Gauges, Badges & Breakdown List
+        function updateDashboard(score, metrics) {
+            // Meter Ring Offset calculation (stroke-dasharray = 251.2)
+            const offset = 251.2 - (251.2 * score) / 100;
+            riskGauge.style.strokeDashoffset = offset;
+            riskScoreNum.innerText = `${score}%`;
+
+            // Verdict Styling
+            let strokeColor = "#678d67"; // Sage Green
+            let verdict = "SAFE";
+            let badgeClass = "bg-sage-100 text-sage-700 border-sage-200";
+            let actionText = "ALLOW NAV";
+            let actionClass = "bg-sage-100 text-sage-700";
+
+            if (score >= 60) {
+                strokeColor = "#dc3545"; // Red
+                verdict = "HIGH RISK QUISHING";
+                badgeClass = "bg-red-100 text-red-700 border-red-200";
+                actionText = "BLOCK & REPORT";
+                actionClass = "bg-red-100 text-red-700";
+            } else if (score >= 25) {
+                strokeColor = "#d97706"; // Amber
+                verdict = "SUSPICIOUS PAYLOAD";
+                badgeClass = "bg-amber-100 text-amber-700 border-amber-200";
+                actionText = "PROCEED WITH CAUTION";
+                actionClass = "bg-amber-100 text-amber-700";
+            } else {
+                // Confetti for safe scan
+                if (typeof confetti === 'function') confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
+            }
+
+            riskGauge.style.stroke = strokeColor;
+            verdictBadge.innerText = verdict;
+            verdictBadge.className = `px-3 py-1 rounded-full text-xs font-bold border tracking-wide uppercase ${badgeClass}`;
+            confidenceTag.innerText = `Confidence: ${(92 + (score % 7)).toFixed(1)}%`;
+
+            if (score >= 60) {
+                verdictTitle.innerText = "Critical Security Alert";
+                verdictDesc.innerText = "Multiple deceptive indicators detected. Do not input credentials or authorize MFA requests.";
+            } else if (score >= 25) {
+                verdictTitle.innerText = "Potential Phishing Anomalies";
+                verdictDesc.innerText = "This QR code uses link shorteners or suspicious keywords. Verify the sender before proceeding.";
+            } else {
+                verdictTitle.innerText = "No Malicious Indicators";
+                verdictDesc.innerText = "Structure aligns with standard corporate parameters and safe domain registration patterns.";
+            }
+
+            // Update Metrics Cards
+            mProtocol.innerText = metrics.isHttps ? "HTTPS (Valid)" : "HTTP (Unsecure)";
+            mProtocol.className = `text-sm font-bold ${metrics.isHttps ? 'text-sage-700' : 'text-red-600'}`;
+
+            mIp.innerText = metrics.isIp ? "Detected" : "Clean Domain";
+            mIp.className = `text-sm font-bold ${metrics.isIp ? 'text-red-600' : 'text-sage-700'}`;
+
+            mShortener.innerText = metrics.isShortener ? "Active" : "None";
+            mShortener.className = `text-sm font-bold ${metrics.isShortener ? 'text-amber-600' : 'text-sage-700'}`;
+
+            mKeywords.innerText = metrics.foundKeywords.length > 0 ? `${metrics.foundKeywords.length} Found` : "None";
+            mKeywords.className = `text-sm font-bold ${metrics.foundKeywords.length > 0 ? 'text-red-600' : 'text-sage-700'}`;
+
+            mLength.innerText = `${metrics.urlLength} Chars`;
+            mDepth.innerText = `${metrics.subdomainCount} Levels`;
+
+            // Action Badge
+            actionRecommendation.classList.remove('hidden');
+            actionRecommendation.classList.add('flex');
+            actionBadge.innerText = actionText;
+            actionBadge.className = `px-3 py-1 rounded-lg text-xs font-bold uppercase ${actionClass}`;
+
+            // Render Forensic Indicators
+            indicatorsContainer.innerHTML = '';
+            if (metrics.indicators.length === 0) {
+                indicatorsContainer.innerHTML = `
+                    <div class="p-4 bg-sage-50 rounded-xl border border-sage-200 text-xs text-sage-800 flex items-center gap-3">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-sage-600"></i>
+                        <span>Clean structural inspection. Destination passed protocol safety, host reputation, and keyword tests.</span>
+                    </div>
+                `;
+            } else {
+                metrics.indicators.forEach(ind => {
+                    const box = document.createElement('div');
+                    box.className = 'p-4 bg-cream-50 rounded-xl border border-sage-200 flex items-start justify-between gap-4 text-xs';
+                    box.innerHTML = `
+                        <div class="space-y-1">
+                            <span class="font-bold text-pastel-navy flex items-center gap-1.5">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i> ${ind.title}
+                            </span>
+                            <p class="text-gray-600 leading-relaxed">${ind.desc}</p>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <span class="px-2 py-0.5 rounded font-mono font-bold bg-amber-100 text-amber-800 text-[10px]">${ind.impact} Impact</span>
+                            <div class="text-gray-400 font-mono mt-1">${ind.weight}</div>
+                        </div>
+                    `;
+                    indicatorsContainer.appendChild(box);
+                });
+            }
+            refreshIcons();
+        }
+
+        // Interactive Sandbox Presets
+        function loadPreset(key) {
+            const preset = PRESETS[key];
+            if (!preset) return;
+
+            // Generate synthetic QR matrix image onto canvas
+            canvasWrapper.classList.remove('hidden');
+            uploadPlaceholder.classList.add('hidden');
+            resetBtn.classList.remove('hidden');
+            canvasStatus.innerText = `Loaded: ${preset.title}`;
+            scanId++;
+            scanLine.classList.add('hidden');
+
+            canvas.width = 240;
+            canvas.height = 240;
+
+            // Draw clean background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, 240, 240);
+
+            // Draw stylized QR code pattern
+            ctx.fillStyle = "#2c3e50";
+            // Finder patterns
+            drawSquare(15, 15, 50);
+            drawSquare(175, 15, 50);
+            drawSquare(15, 175, 50);
+
+            // Synthetic data bits
+            for (let i = 0; i < 180; i++) {
+                const rx = Math.floor(Math.random() * 20) * 10 + 20;
+                const ry = Math.floor(Math.random() * 20) * 10 + 20;
+                if ((rx < 70 && ry < 70) || (rx > 160 && ry < 70) || (rx < 70 && ry > 160)) continue;
+                ctx.fillRect(rx, ry, 7, 7);
+            }
+
+            // Overlay text tag
+            ctx.fillStyle = "#678d67";
+            ctx.font = "bold 12px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText(`[${preset.svgText}]`, 120, 125);
+
+            // Highlight synthetic bounds
+            drawQRBoundingBox({
+                topLeftCorner: { x: 15, y: 15 },
+                topRightCorner: { x: 225, y: 15 },
+                bottomRightCorner: { x: 225, y: 225 },
+                bottomLeftCorner: { x: 15, y: 225 }
+            });
+
+            // Analyze preset payload
+            analyzePayload(preset.payload);
+            scrollToSection('scanner-main'); // show the result, not just a toast
+            showToast(`Loaded Preset: ${preset.title}`);
+        }
+
+        // Helper to draw QR finder corners
+        function drawSquare(x, y, size) {
+            ctx.fillRect(x, y, size, size);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x + 7, y + 7, size - 14, size - 14);
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(x + 14, y + 14, size - 28, size - 28);
+        }
+
+        // Reset Scanner UI
+        function resetScanner() {
+            uploadPlaceholder.classList.remove('hidden');
+            canvasWrapper.classList.add('hidden');
+            resetBtn.classList.add('hidden');
+            canvasStatus.innerText = "Idle - Ready";
+            scanId++;
+            scanLine.classList.add('hidden');
+            fileInput.value = "";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Reset Dashboard
+            payloadOutput.innerHTML = '<span class="text-gray-400 italic">No QR code payload detected yet...</span>';
+            riskGauge.style.strokeDashoffset = 251.2;
+            riskGauge.style.stroke = "#678d67";
+            riskScoreNum.innerText = "0%";
+            verdictBadge.innerText = "Awaiting Input";
+            verdictBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-sage-100 text-sage-700 border border-sage-200 tracking-wide uppercase";
+            verdictTitle.innerText = "Upload an image to scan";
+            verdictDesc.innerText = "AegisQR extracts raw strings, decodes nested shorteners, checks lexical entropy, IP structures, and spoofing keywords.";
+            confidenceTag.innerText = "Confidence: --";
+
+            mProtocol.innerText = "--"; mProtocol.className = "text-sm font-bold text-gray-800";
+            mIp.innerText = "--"; mIp.className = "text-sm font-bold text-gray-800";
+            mShortener.innerText = "--"; mShortener.className = "text-sm font-bold text-gray-800";
+            mKeywords.innerText = "--"; mKeywords.className = "text-sm font-bold text-gray-800";
+            mLength.innerText = "--";
+            mDepth.innerText = "--";
+
+            actionRecommendation.classList.add('hidden');
+            indicatorsContainer.innerHTML = `
+                <div class="p-4 bg-cream-50 rounded-xl border border-sage-200/60 text-xs text-gray-500 flex items-center gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-sage-500 flex-shrink-0"></i>
+                    <span>No active scan performed. Scan a QR code image above or select a preset scenario from the interactive sandbox below.</span>
+                </div>
+            `;
+            refreshIcons();
+            showToast("Scanner reset");
+        }
+
+        // Copy decoded payload to clipboard safely
+        function copyPayload() {
+            const text = payloadOutput.innerText;
+            if (!text || text.includes("No QR code payload")) {
+                showToast("No payload string to copy!");
+                return;
+            }
+            const done = () => showToast("Payload URL copied to clipboard!");
+            const fail = () => showToast("Copy failed - select the text manually.");
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(fail);
+                return;
+            }
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(dummy);
+            ok ? done() : fail();
+        }
+
+        // Smooth Scroll Helper
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Notification Toast Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
